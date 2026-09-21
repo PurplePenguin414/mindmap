@@ -156,7 +156,14 @@ function buildNodeToolbar(node) {
   const delBtn = document.createElement('button');
   delBtn.textContent = 'Delete';
   delBtn.className = 'danger';
-  delBtn.onclick = (e) => { e.stopPropagation(); deleteNodeFlow(node); };
+  const isCenter = node.parent_id === null;
+  const hasBranches = childrenOf(node.id).length > 0;
+  if (isCenter && hasBranches) {
+    delBtn.disabled = true;
+    delBtn.title = 'The center node can\'t be deleted while it still has branches. Delete its branches first, or edit the center instead.';
+  } else {
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteNodeFlow(node); };
+  }
 
   tb.append(addBtn, editBtn, linkBtn, delBtn);
   return tb;

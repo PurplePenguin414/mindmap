@@ -124,27 +124,50 @@ check('deleting a linked node removes its links', () => {
   assert.strictEqual(link, undefined);
 });
 
-// --- Scenario 5: delete the ROOT node -> children become new roots (level 0) ---
-// Fresh map for a clean root-delete test.
+// --- Scenario 5: the center node can only be deleted once it's empty ---
+// Fresh map for a clean center-delete test.
 const { mapId: mapId2, rootId: rootId2 } = mm.createMap(db, 'Root Delete Test');
 const rNodeX = mm.createNode(db, { mapId: mapId2, parentId: rootId2, title: 'X' });
 const rNodeY = mm.createNode(db, { mapId: mapId2, parentId: rootId2, title: 'Y' });
 const rNodeX1 = mm.createNode(db, { mapId: mapId2, parentId: rNodeX, title: 'X1' });
 
-mm.deleteNode(db, rootId2);
-
-check('deleting root: former children become new roots at level 0', () => {
+check('deleting a populated center node throws and changes nothing', () => {
+  assert.throws(() => mm.deleteNode(db, rootId2), /branches attached/);
+  const root = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rootId2);
+  assert.notStrictEqual(root, undefined);
   const x = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rNodeX);
-  const y = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rNodeY);
-  assert.strictEqual(x.parent_id, null);
-  assert.strictEqual(y.parent_id, null);
-  assert.strictEqual(x.level, 0);
-  assert.strictEqual(y.level, 0);
+  assert.strictEqual(x.parent_id, rootId2); // untouched
 });
 
-check('deleting root: grandchildren cascade-recalculate (2 -> 1)', () => {
+check('editing a populated center node is still allowed', () => {
+  mm.editNode(db, rootId2, { title: 'Renamed Center', description: 'still editable' });
+  const root = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rootId2);
+  assert.strictEqual(root.title, 'Renamed Center');
+});
+
+check('deleting the center succeeds once its branches are gone', () => {
+  // Deleting X reattaches X1 to the root (normal non-center delete) -
+  // the root still has a branch (X1) at this point, so it's still blocked.
+  mm.deleteNode(db, rNodeX);
   const x1 = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rNodeX1);
+  assert.strictEqual(x1.parent_id, rootId2);
   assert.strictEqual(x1.level, 1);
+  assert.throws(() => mm.deleteNode(db, rootId2), /branches attached/);
+
+  mm.deleteNode(db, rNodeY);
+  mm.deleteNode(db, rNodeX1);
+  // Root now has zero children -> deleting it should succeed.
+  mm.deleteNode(db, rootId2);
+  const root = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rootId2);
+  assert.strictEqual(root, undefined);
+});
+
+check('a brand-new empty center (no branches) can be deleted immediately', () => {
+  const { mapId: mapId3, rootId: rootId3 } = mm.createMap(db, 'Empty Center Test');
+  mm.deleteNode(db, rootId3);
+  const root = db.prepare('SELECT * FROM nodes WHERE id = ?').get(rootId3);
+  assert.strictEqual(root, undefined);
+  mm.deleteMap(db, mapId3); // cleanup
 });
 
 // --- Scenario 6: editing title/description, unlimited content, no caps ---

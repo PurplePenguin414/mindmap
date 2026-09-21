@@ -94,11 +94,12 @@ This folder includes a `Dockerfile` and `docker-compose.yml`.
 The SQLite database lives in `./db` on the host (mounted into the
 container as a volume), so it survives rebuilds. Back that folder up.
 
-## A judgment call worth knowing about
+## About deleting the center node
 
-The most natural reading of "delete a node reattaches its children to its
-parent" doesn't say what should happen if you delete the *center* node
-itself — there's no parent for its children to reattach to. This app has
-each of the deleted center's direct children become its own new center,
-rather than deleting the whole map or picking one child arbitrarily. Undo
-(Ctrl+Z) reverses it instantly if that's not what you wanted.
+The center node can be edited freely at any time. It can only be *deleted*
+once it has no branches attached to it — with nothing above it to reattach
+branches to, deleting a populated center would mean either destroying its
+whole map or picking one of its children to become the new center
+arbitrarily, so it's blocked instead. The Delete button on the center is
+disabled (with an explanation on hover) whenever it still has branches;
+delete or reattach those branches first, and Delete becomes available.
