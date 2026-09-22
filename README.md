@@ -44,11 +44,12 @@ needs Node ≥22).
 
 ```bash
 npm install
+cp .env.example .env
 node scripts/set-password.js "your password here"
 ```
 
-That prints a line like `APP_PASSWORD_HASH=$2b$12$...` — create a `.env`
-file in this folder with that line plus:
+That prints a line like `APP_PASSWORD_HASH=$2b$12$...` — open `.env` (it
+was just created from `.env.example`) and fill in real values:
 
 ```
 PORT=3000
@@ -79,15 +80,22 @@ Paste the new `APP_PASSWORD_HASH` into `.env` and restart the app.
 This folder includes a `Dockerfile` and `docker-compose.yml`.
 
 1. Copy the whole folder to your server.
-2. Create `.env` there as described above (generate the password hash with
-   `node scripts/set-password.js` — either locally first, or once inside
-   the built container: `docker compose run --rm mindmap node
-   scripts/set-password.js "your password"`).
-3. Pick a free local port in `docker-compose.yml` (defaults to `3000`) and
+2. Copy the template env file: `cp .env.example .env`
+3. Generate a password hash. If you'd rather not install Node on the host,
+   run the script inside the container instead:
+   ```bash
+   docker compose run --rm mindmap node scripts/set-password.js "your password"
+   ```
+   That prints a line like `APP_PASSWORD_HASH=$2b$12$...` — copy it.
+   (Or just run `node scripts/set-password.js "your password"` locally if
+   you do have Node ≥22 on the host.)
+4. Edit `.env` and fill in your real values — a long random string for
+   `SESSION_SECRET`, and the hash from step 3 for `APP_PASSWORD_HASH`.
+5. Pick a free local port in `docker-compose.yml` (defaults to `3000`) and
    put a reverse proxy with a TLS cert in front of it if you want it
    reachable from outside your network — e.g. Nginx/Apache/Caddy plus
    Let's Encrypt (certbot), or a tunnel like Cloudflare Tunnel.
-4. `docker compose build && docker compose up -d` (if your server only has
+6. `docker compose build && docker compose up -d` (if your server only has
    the older Docker Compose v1, use `docker-compose` with a hyphen instead
    — same commands otherwise).
 
